@@ -1,0 +1,9 @@
+[package]
+
+name = "rusted"
+version = "0.0.1"
+authors = ["scott-linder <scott.b.linder@wmich.edu>"]
+
+[[bin]]
+
+name = "ed"

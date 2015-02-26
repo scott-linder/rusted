@@ -62,6 +62,7 @@ impl FromStr for Line {
     fn from_str(s: &str) -> Result<Line> {
         // special cases
         match s {
+            "" => return Ok(Line::Current),
             "." => return Ok(Line::Current),
             "$" => return Ok(Line::Last),
             _ => {},

@@ -11,6 +11,8 @@ pub type Result<T> = result::Result<T, Error>;
 #[derive(Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     InvalidAddress,
+    InvalidCommand,
+    NoCommand,
 }
 
 impl fmt::Display for Error {
@@ -23,6 +25,8 @@ impl error::Error for Error {
     fn description(&self) -> &str {
         match *self {
             Error::InvalidAddress => "Invalid address",
+            Error::InvalidCommand => "Invalid command",
+            Error::NoCommand => "No command provided",
         }
     }
 }

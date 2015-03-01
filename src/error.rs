@@ -1,5 +1,6 @@
 //! Errors
 
+use std::old_io::IoError;
 use std::error;
 use std::fmt;
 use std::result;
@@ -13,6 +14,7 @@ pub enum Error {
     InvalidAddress,
     InvalidCommand,
     NoCommand,
+    IoError,
 }
 
 impl fmt::Display for Error {
@@ -27,6 +29,13 @@ impl error::Error for Error {
             Error::InvalidAddress => "Invalid address",
             Error::InvalidCommand => "Invalid command",
             Error::NoCommand => "No command provided",
+            Error::IoError => "I/O error",
         }
+    }
+}
+
+impl error::FromError<IoError> for Error {
+    fn from_error(_err: IoError) -> Error {
+        Error::IoError
     }
 }

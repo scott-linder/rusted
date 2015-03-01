@@ -1,8 +1,6 @@
-//! rusted - line editing
-
-#![feature(core)]
+#![feature(core, old_io, unboxed_closures)]
 
 pub mod addr;
 pub mod cmd;
 pub mod error;
-pub mod buf;
+pub mod ed;

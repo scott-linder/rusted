@@ -5,10 +5,11 @@ use error::{Error, Result};
 use addr::{Addr, Line};
 
 /// An ed command.
-#[derive(Copy, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Cmd {
     Append(Line),
     Print(Addr),
+    Write(Addr, Option<String>),
     Quit,
 }
 
@@ -24,6 +25,8 @@ impl FromStr for Cmd {
             Some(i) => match &s[i..i+1] {
                 "a" => Ok(Cmd::Append(try!(s[..i].parse()))),
                 "p" => Ok(Cmd::Print(try!(s[..i].parse()))),
+                // FIXME: parse filename
+                "w" => Ok(Cmd::Write(try!(s[..i].parse()), None)),
                 _ => Err(Error::InvalidCommand),
             },
             None => return Err(Error::NoCommand),

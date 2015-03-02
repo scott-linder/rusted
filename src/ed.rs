@@ -6,16 +6,22 @@ use cmd::Cmd;
 use error::Result;
 
 #[derive(Debug)]
-pub struct Ed<D: FnMut(&str) -> IoResult<()>> {
+pub struct Ed<D, W>
+    where D: FnMut(&str) -> IoResult<()>,
+          W: FnMut(&str) -> IoResult<Box<Writer>> {
     display: D,
+    write: W,
     lines: LinkedList<String>,
     appending: bool,
 }
 
-impl<D: FnMut(&str) -> IoResult<()>> Ed<D> {
-    pub fn new(display: D) -> Ed<D> {
+impl<D, W> Ed<D, W>
+    where D: FnMut(&str) -> IoResult<()>,
+          W: FnMut(&str) -> IoResult<Box<Writer>> {
+    pub fn new(display: D, write: W) -> Ed<D, W> {
         Ed {
             display: display,
+            write: write,
             lines: LinkedList::new(),
             appending: false,
         }
@@ -36,6 +42,13 @@ impl<D: FnMut(&str) -> IoResult<()>> Ed<D> {
                     for line in &self.lines {
                         try!(self.display.call_mut((&line[..],)));
                     }
+                },
+                Cmd::Write(..) => {
+                    let mut writer = try!(self.write.call_mut(("test.txt",)));
+                    for line in &self.lines {
+                        try!(writeln!(&mut writer, "{}", line));
+                    }
+                    try!(writer.flush());
                 },
                 Cmd::Quit => {},
             }

@@ -35,8 +35,7 @@ impl<D, W> Ed<D, W>
                 self.lines.push_back(s.to_string());
             }
         } else {
-            let cmd: Cmd = try!(s.parse());
-            match cmd {
+            match try!(s.parse()) {
                 Cmd::Append(..) => self.appending = true,
                 Cmd::Print(..) => {
                     for line in &self.lines {

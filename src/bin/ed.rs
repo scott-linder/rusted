@@ -2,17 +2,18 @@
 
 extern crate rusted;
 
-use std::io::{stdin, BufReadExt};
+use std::io::{stdin, stdout, Write, BufReadExt};
 use std::fs::File;
 use rusted::ed::Ed;
 
 fn main() {
+    let write = stdout();
     let mut ed = Ed::new(|s| {
-        println!("{}", s);
+        try!(write!(&mut write.lock(), "{}", s));
         Ok(())
     }, |s| {
         let file = try!(File::create(s));
-        Ok(Box::new(file))
+        Ok(file)
     });
     let read = stdin();
     for line in read.lock().lines() {

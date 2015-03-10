@@ -6,19 +6,21 @@ use cmd::Cmd;
 use error::Result;
 
 #[derive(Debug)]
-pub struct Ed<D, W>
-    where D: FnMut(&str) -> io::Result<()>,
-          W: FnMut(&str) -> io::Result<Box<Write>> {
+pub struct Ed<D, F, W>
+    where D: FnMut(&str) -> Result<()>,
+          F: FnMut(&str) -> Result<W>,
+          W: Write {
     display: D,
-    write: W,
+    write: F,
     lines: LinkedList<String>,
     appending: bool,
 }
 
-impl<D, W> Ed<D, W>
-    where D: FnMut(&str) -> io::Result<()>,
-          W: FnMut(&str) -> io::Result<Box<Write>> {
-    pub fn new(display: D, write: W) -> Ed<D, W> {
+impl<D, F, W> Ed<D, F, W>
+    where D: FnMut(&str) -> Result<()>,
+          F: FnMut(&str) -> Result<W>,
+          W: Write {
+    pub fn new(display: D, write: F) -> Ed<D, F, W> {
         Ed {
             display: display,
             write: write,

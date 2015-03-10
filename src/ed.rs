@@ -1,14 +1,14 @@
 //! The editor
 
 use std::collections::LinkedList;
-use std::old_io::IoResult;
+use std::io::{self, Write};
 use cmd::Cmd;
 use error::Result;
 
 #[derive(Debug)]
 pub struct Ed<D, W>
-    where D: FnMut(&str) -> IoResult<()>,
-          W: FnMut(&str) -> IoResult<Box<Writer>> {
+    where D: FnMut(&str) -> io::Result<()>,
+          W: FnMut(&str) -> io::Result<Box<Write>> {
     display: D,
     write: W,
     lines: LinkedList<String>,
@@ -16,8 +16,8 @@ pub struct Ed<D, W>
 }
 
 impl<D, W> Ed<D, W>
-    where D: FnMut(&str) -> IoResult<()>,
-          W: FnMut(&str) -> IoResult<Box<Writer>> {
+    where D: FnMut(&str) -> io::Result<()>,
+          W: FnMut(&str) -> io::Result<Box<Write>> {
     pub fn new(display: D, write: W) -> Ed<D, W> {
         Ed {
             display: display,

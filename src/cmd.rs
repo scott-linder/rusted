@@ -1,15 +1,18 @@
-//! Command
+//! Commands
+//!
+//! All command are invoked with a single alphabetic character, preceeded by
+//! an optional address and trailed by an optional suffix.
 
-use std::str::FromStr;
+use std::str::{FromStr, CharRange};
 use error::{Error, Result};
-use addr::{Addr, Line};
+use addr::{Range, Line};
 
-/// An ed command.
+/// A command.
 #[derive(Debug, Eq, PartialEq)]
 pub enum Cmd {
-    Append(Line),
-    Print(Addr),
-    Write(Addr, Option<String>),
+    Append(Option<Line>),
+    Print(Option<Range>),
+    Write(Option<Range>, Option<String>),
     Quit,
 }
 
@@ -17,36 +20,44 @@ impl FromStr for Cmd {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Cmd> {
-        match s {
-            "q" => return Ok(Cmd::Quit),
-            _ => {},
+        let mut i = 0;
+        while i < s.len() {
+            let CharRange {ch, next} = s.char_range_at(i);
+            if ch.is_alphabetic() {
+                let address = &s[..i];
+                let command = ch;
+                let suffix = &s[next..];
+                return match command {
+                    'a' => Ok(Cmd::Append(try!(address.parse()))),
+                    'p' => Ok(Cmd::Print(try!(address.parse()))),
+                    'q' => Ok(Cmd::Quit),
+                    'w' => Ok(Cmd::Write(try!(address.parse()), match suffix {
+                        "" => None,
+                        s => Some(s.to_string()),
+                    })),
+                    _ => Err(Error::InvalidCommand),
+                }
+            } else {
+                i = next;
+            }
         }
-        return match s.find(|c: char| c.is_alphabetic()) {
-            Some(i) => match &s[i..i+1] {
-                "a" => Ok(Cmd::Append(try!(s[..i].parse()))),
-                "p" => Ok(Cmd::Print(try!(s[..i].parse()))),
-                // FIXME: parse filename
-                "w" => Ok(Cmd::Write(try!(s[..i].parse()), None)),
-                _ => Err(Error::InvalidCommand),
-            },
-            None => return Err(Error::NoCommand),
-        }
+        Err(Error::NoCommand)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use addr::{Addr, Line};
+    use addr::{Range, Line};
 
     #[test]
     fn simple() {
-        assert_eq!("a".parse(), Ok(Cmd::Append(Line::Current)));
-        assert_eq!("1a".parse(), Ok(Cmd::Append(Line::Idx(1))));
+        assert_eq!("a".parse(), Ok(Cmd::Append(None)));
+        assert_eq!("1a".parse(), Ok(Cmd::Append(Some(Line::Idx(1)))));
         assert!("1,2a".parse::<Cmd>().is_err());
-        assert_eq!("p".parse(), Ok(Cmd::Print(Addr::Line(Line::Current))));
-        assert_eq!("1p".parse(), Ok(Cmd::Print(Addr::Line(Line::Idx(1)))));
-        assert_eq!("1,2p".parse(), Ok(Cmd::Print(Addr::Range(Line::Idx(1), Line::Idx(2)))));
+        assert_eq!("p".parse(), Ok(Cmd::Print(None)));
+        assert_eq!("1p".parse(), Ok(Cmd::Print(Some(Range(Line::Idx(1), Line::Idx(1))))));
+        assert_eq!("1,2p".parse(), Ok(Cmd::Print(Some(Range(Line::Idx(1), Line::Idx(2))))));
         assert_eq!("q".parse(), Ok(Cmd::Quit));
     }
 }

@@ -1,51 +1,53 @@
-//! Line addressing
+//! Addressing
+//!
+//! Parsing can result in a true error via `Err`, or can succeed, but indicate
+//! that no address was specified via `Ok(None)`, in which case the calling
+//! code can make a decision about what the "default" address should be.
 
 use std::str::FromStr;
 use error::{Error, Result};
 
-/// An address into a list of lines.
-///
-/// A simple address identifies only a single line, but an address can also
-/// refer to a range of lines.
+/// An address spanning between two lines.
 #[derive(Copy, Debug, Eq, PartialEq)]
-pub enum Addr {
-    /// An address of a single line.
-    Line(Line),
-    /// An address of a range between two lines.
-    Range(Line, Line),
+pub struct Range(pub Line, pub Line);
+
+impl Range {
+    pub fn repeat(line: Line) -> Range {
+        Range(line, line)
+    }
 }
 
 /// Characters used to split a range up into its component line addresses.
 static RANGE_SPLITTERS: [char; 2] = [',', ';'];
 
-impl FromStr for Addr {
+impl FromStr for Option<Range> {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Addr> {
+    fn from_str(s: &str) -> Result<Option<Range>> {
         // special cases
         match s {
-            "," => return Ok(Addr::Range(Line::Idx(1), Line::Last)),
-            ";" => return Ok(Addr::Range(Line::Current, Line::Last)),
+            "," => return Ok(Some(Range(Line::Idx(1), Line::Last))),
+            ";" => return Ok(Some(Range(Line::Current, Line::Last))),
             _ => {},
         }
         // normal cases
-        let mut splits = s.split(&RANGE_SPLITTERS[..]);
-        let l1: Line = match splits.next() {
-            Some("") | None => return Ok(Addr::Line(Line::Current)),
-            Some(l) => try!(l.parse()),
-        };
-        let l2: Line = match splits.next() {
-            None => return Ok(Addr::Line(l1)),
-            Some(l) => try!(l.parse()),
-        };
-        match splits.next() {
-            None => Ok(Addr::Range(l1, l2)),
-            Some(..) => return Err(Error::InvalidAddress),
+        let mut l1 = None;
+        let mut l2 = None;
+        for addr in s.split(&RANGE_SPLITTERS[..]) {
+            l1 = l2;
+            l2 = try!(addr.parse());
         }
+        let (l1, l2) = match (l1, l2) {
+            (None, None) => return Ok(None),
+            (Some(l1), None) => (l1, l1),
+            (None, Some(l2)) => (l2, l2),
+            (Some(l1), Some(l2)) => (l1, l2),
+        };
+        Ok(Some(Range(l1, l2)))
     }
 }
 
-/// A subset of possible addresses which refer to a single line.
+/// An address specifying a single line.
 #[derive(Copy, Debug, Eq, PartialEq)]
 pub enum Line {
     /// The index of a line.
@@ -56,20 +58,20 @@ pub enum Line {
     Last,
 }
 
-impl FromStr for Line {
+impl FromStr for Option<Line> {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Line> {
+    fn from_str(s: &str) -> Result<Option<Line>> {
         // special cases
         match s {
-            "" => return Ok(Line::Current),
-            "." => return Ok(Line::Current),
-            "$" => return Ok(Line::Last),
+            "" => return Ok(None),
+            "." => return Ok(Some(Line::Current)),
+            "$" => return Ok(Some(Line::Last)),
             _ => {},
         }
         // normal cases
         match s.parse::<usize>() {
-            Ok(i) => return Ok(Line::Idx(i)),
+            Ok(i) => return Ok(Some(Line::Idx(i))),
             Err(..) => return Err(Error::InvalidAddress),
         }
     }
@@ -80,22 +82,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn simple() {
-        assert_eq!("".parse(), Ok(Addr::Line(Line::Current)));
-        assert_eq!("0".parse(), Ok(Addr::Line(Line::Idx(0))));
-        assert_eq!("0,0".parse(), Ok(Addr::Range(Line::Idx(0),Line::Idx(0))));
-        assert_eq!("0;0".parse(), Ok(Addr::Range(Line::Idx(0),Line::Idx(0))));
-        assert!("0,0,".parse::<Addr>().is_err())
+    fn none() {
+        assert_eq!("".parse::<Option<Range>>(), Ok(None));
     }
 
     #[test]
-    fn line() {
-        assert_eq!("10".parse(), Ok(Addr::Line(Line::Idx(10))));
+    fn one() {
+        let one = Ok(Some(Range(Line::Idx(1), Line::Idx(1))));
+        assert_eq!("1".parse(), one);
+        assert_eq!("1,".parse(), one);
+        assert_eq!("1,1".parse(), one);
+        assert_eq!("1,1,".parse(), one);
+        assert_eq!("1,1,1".parse(), one);
     }
 
     #[test]
-    fn range() {
-        assert_eq!(",".parse(), Ok(Addr::Range(Line::Idx(1), Line::Last)));
-        assert_eq!("0,1".parse(), Ok(Addr::Range(Line::Idx(0), Line::Idx(1))));
+    fn two() {
+        let two = Ok(Some(Range(Line::Idx(1), Line::Idx(2))));
+        assert_eq!("1,2".parse(), two);
+    }
+
+    #[test]
+    fn special() {
+        assert_eq!(".".parse(), Ok(Some(Line::Current)));
+        assert_eq!("$".parse(), Ok(Some(Line::Last)));
+        assert_eq!(",".parse(), Ok(Some(Range(Line::Idx(1), Line::Last))));
+        assert_eq!(";".parse(), Ok(Some(Range(Line::Current, Line::Last))));
     }
 }

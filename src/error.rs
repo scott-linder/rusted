@@ -14,6 +14,7 @@ pub enum Error {
     InvalidAddress,
     InvalidCommand,
     NoCommand,
+    NoFilename,
     Io,
 }
 
@@ -29,6 +30,7 @@ impl error::Error for Error {
             Error::InvalidAddress => "Invalid address",
             Error::InvalidCommand => "Invalid command",
             Error::NoCommand => "No command provided",
+            Error::NoFilename => "No current filename",
             Error::Io => "I/O error",
         }
     }

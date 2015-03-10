@@ -1,4 +1,4 @@
-#![feature(core, io, unboxed_closures)]
+#![feature(core, io, unboxed_closures, collections)]
 
 pub mod addr;
 pub mod cmd;

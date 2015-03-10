@@ -7,9 +7,10 @@ use std::fs::File;
 use rusted::ed::Ed;
 
 fn main() {
-    let write = stdout();
+    let mut write = stdout();
     let mut ed = Ed::new(|s| {
-        try!(write!(&mut write.lock(), "{}", s));
+        try!(writeln!(&mut write.lock(), "{}", s));
+        try!(write.flush());
         Ok(())
     }, |s| {
         let file = try!(File::create(s));

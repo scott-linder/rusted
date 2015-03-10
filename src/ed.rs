@@ -1,31 +1,41 @@
 //! The editor
 
 use std::collections::LinkedList;
-use std::io::{self, Write};
+use std::io::Write;
 use cmd::Cmd;
-use error::Result;
+use error::{Error, Result};
+use addr::{Range, Line};
 
+/// An instance of the editor.
+///
+/// Manages a buffer, parsing and executing commands.
+/// Delegates implementation of some functionality to callbacks.
 #[derive(Debug)]
 pub struct Ed<D, F, W>
     where D: FnMut(&str) -> Result<()>,
           F: FnMut(&str) -> Result<W>,
           W: Write {
     display: D,
-    write: F,
+    get_file: F,
     lines: LinkedList<String>,
     appending: bool,
+    current: usize,
+    filename: Option<String>,
 }
 
 impl<D, F, W> Ed<D, F, W>
     where D: FnMut(&str) -> Result<()>,
           F: FnMut(&str) -> Result<W>,
           W: Write {
-    pub fn new(display: D, write: F) -> Ed<D, F, W> {
+
+    pub fn new(display: D, get_file: F) -> Ed<D, F, W> {
         Ed {
             display: display,
-            write: write,
+            get_file: get_file,
             lines: LinkedList::new(),
             appending: false,
+            current: 0,
+            filename: None,
         }
     }
 
@@ -34,26 +44,74 @@ impl<D, F, W> Ed<D, F, W>
             if s == "." {
                 self.appending = false;
             } else {
-                self.lines.push_back(s.to_string());
+                let mut lines = self.lines.iter_mut();
+                for _ in 0..self.current {
+                    try!(lines.next().ok_or(Error::InvalidAddress));
+                }
+                lines.insert_next(s.to_string());
+                self.current += 1;
             }
         } else {
             match try!(s.parse()) {
-                Cmd::Append(..) => self.appending = true,
-                Cmd::Print(..) => {
-                    for line in &self.lines {
-                        try!(self.display.call_mut((&line[..],)));
+                Cmd::Append(line) => {
+                    let line = line.unwrap_or(Line::Current);
+                    match line {
+                        Line::Idx(i) => if i <= self.lines.len() {
+                            self.current = i;
+                        } else {
+                            return Err(Error::InvalidAddress);
+                        },
+                        Line::Current => {},
+                        Line::Last => self.current = self.lines.len(),
+                    }
+                    self.appending = true;
+                }
+                Cmd::Print(range) => {
+                    let Range(from, to) = range.unwrap_or(Range::repeat(Line::Current));
+                    let from = try!(self.line_number(from));
+                    let to = try!(self.line_number(to));
+                    for (i, line) in self.lines.iter().enumerate() {
+                        let i = i + 1;
+                        if i >= from && i <= to {
+                            try!((self.display)(&line[..]));
+                        }
                     }
                 },
-                Cmd::Write(..) => {
-                    let mut writer = try!(self.write.call_mut(("test.txt",)));
-                    for line in &self.lines {
-                        try!(writeln!(&mut writer, "{}", line));
+                Cmd::Write(range, filename) => {
+                    if let Some(filename) = filename {
+                        self.filename = Some(filename.to_string());
                     }
-                    try!(writer.flush());
+                    let mut write = try!((self.get_file)(match self.filename {
+                        Some(ref s) => &*s,
+                        None => return Err(Error::NoFilename),
+                    }));
+                    let Range(from, to) = range.unwrap_or(Range(Line::Idx(1), Line::Last));
+                    let from = try!(self.line_number(from));
+                    let to = try!(self.line_number(to));
+                    for (i, line) in self.lines.iter().enumerate() {
+                        let i = i + 1;
+                        if i >= from && i <= to {
+                            try!(writeln!(&mut write, "{}", line));
+                        }
+                    }
+                    try!(write.flush());
                 },
                 Cmd::Quit => {},
             }
         }
         Ok(())
+    }
+
+    /// Convert a Line into a concrete line number.
+    fn line_number(&self, line: Line) -> Result<usize> {
+        Ok(match line {
+            Line::Idx(i) => if i > 0 && i <= self.lines.len() {
+                i
+            } else {
+                return Err(Error::InvalidAddress);
+            },
+            Line::Current => self.current,
+            Line::Last => self.lines.len(),
+        })
     }
 }

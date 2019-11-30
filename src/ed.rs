@@ -102,7 +102,7 @@ impl<D, F, W> Ed<D, F, W>
         Ok(())
     }
 
-    /// Convert a Line into a concrete line number.
+    /// Convert a Line into a concrete line number. 
     fn line_number(&self, line: Line) -> Result<usize> {
         Ok(match line {
             Line::Idx(i) => if i > 0 && i <= self.lines.len() {

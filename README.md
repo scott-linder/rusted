@@ -1,6 +1,6 @@
 # rusted
 
-![build status badge](https://github.com/scott-linder/rusted/workflows/Rust/badge.svg)
+[![master status badge](https://github.com/scott-linder/rusted/workflows/master/badge.svg)](https://github.com/scott-linder/rusted/actions?query=workflow%3Amaster)
 
 A line editor. A clone of the venerable ed(1).
 

@@ -9,7 +9,7 @@ use std::result;
 pub type Result<T> = result::Result<T, Error>;
 
 /// Any error producable by rusted.
-#[derive(Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     InvalidAddress,
     InvalidCommand,
@@ -36,8 +36,8 @@ impl error::Error for Error {
     }
 }
 
-impl error::FromError<io::Error> for Error {
-    fn from_error(_err: io::Error) -> Error {
+impl From<io::Error> for Error {
+    fn from(_err: io::Error) -> Error {
         Error::Io
     }
 }

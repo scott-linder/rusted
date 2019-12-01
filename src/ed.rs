@@ -44,15 +44,16 @@ impl<D, F, W> Ed<D, F, W>
             if s == "." {
                 self.appending = false;
             } else {
-                let mut lines = self.lines.iter_mut();
-                for _ in 0..self.current {
-                    try!(lines.next().ok_or(Error::InvalidAddress));
+                if self.current > self.lines.len() {
+                    return Err(Error::InvalidAddress);
                 }
-                lines.insert_next(s.to_string());
+                let mut tail = self.lines.split_off(self.current);
+                self.lines.push_back(s.to_string());
+                self.lines.append(&mut tail);
                 self.current += 1;
             }
         } else {
-            match try!(s.parse()) {
+            match s.parse()? {
                 Cmd::Append(line) => {
                     let line = line.unwrap_or(Line::Current);
                     match line {
@@ -68,12 +69,12 @@ impl<D, F, W> Ed<D, F, W>
                 }
                 Cmd::Print(range) => {
                     let Range(from, to) = range.unwrap_or(Range::repeat(Line::Current));
-                    let from = try!(self.line_number(from));
-                    let to = try!(self.line_number(to));
+                    let from = self.line_number(from)?;
+                    let to = self.line_number(to)?;
                     for (i, line) in self.lines.iter().enumerate() {
                         let i = i + 1;
                         if i >= from && i <= to {
-                            try!((self.display)(&line[..]));
+                            (self.display)(&line[..])?;
                         }
                     }
                 },
@@ -81,20 +82,20 @@ impl<D, F, W> Ed<D, F, W>
                     if let Some(filename) = filename {
                         self.filename = Some(filename.to_string());
                     }
-                    let mut write = try!((self.get_file)(match self.filename {
+                    let mut write = (self.get_file)(match self.filename {
                         Some(ref s) => &*s,
                         None => return Err(Error::NoFilename),
-                    }));
+                    })?;
                     let Range(from, to) = range.unwrap_or(Range(Line::Idx(1), Line::Last));
-                    let from = try!(self.line_number(from));
-                    let to = try!(self.line_number(to));
+                    let from = self.line_number(from)?;
+                    let to = self.line_number(to)?;
                     for (i, line) in self.lines.iter().enumerate() {
                         let i = i + 1;
                         if i >= from && i <= to {
-                            try!(writeln!(&mut write, "{}", line));
+                            writeln!(&mut write, "{}", line)?;
                         }
                     }
-                    try!(write.flush());
+                    write.flush()?;
                 },
                 Cmd::Quit => {},
             }

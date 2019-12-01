@@ -1,5 +1,7 @@
 # rusted
 
+![build status badge](https://github.com/scott-linder/rusted/workflows/Rust/badge.svg)
+
 A line editor. A clone of the venerable ed(1).
 
 # why rust
